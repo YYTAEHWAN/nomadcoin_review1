@@ -1,8 +1,6 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/boltdb/bolt"
 	"github.com/nomadcoders_review/utils"
 )
@@ -29,25 +27,4 @@ func DB() *bolt.DB {
 		utils.HandleErr(err)
 	}
 	return db
-}
-
-func SaveBlock(hash string, payload []byte) {
-	fmt.Printf("Saving Block %s\nData: %b", hash, payload)
-	err := DB().Update(func(t *bolt.Tx) error {
-		bucket := t.Bucket([]byte(blocksBucket))
-		// DB는 Key and Value로 이루어져 있기 때문에 앞에가 Key 뒤에가 Value
-		err := bucket.Put([]byte(hash), payload)
-		return err
-	})
-	utils.HandleErr(err)
-}
-
-func SaveChain(payload []byte) {
-	err := DB().Update(func(t *bolt.Tx) error {
-		bucket := t.Bucket([]byte(dataBucket))
-		// DB는 Key and Value로 이루어져 있기 때문에 앞에가 Key 뒤에가 Value
-		err := bucket.Put([]byte("checkpoint"), payload)
-		return err
-	})
-	utils.HandleErr(err)
 }
