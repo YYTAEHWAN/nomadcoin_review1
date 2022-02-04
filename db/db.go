@@ -11,6 +11,8 @@ const (
 	dbName       = "blockchain.db"
 	dataBucket   = "data"
 	blocksBucket = "blocks"
+
+	checkpoint = "checkpoint"
 )
 
 var db *bolt.DB
@@ -31,11 +33,11 @@ func DB() *bolt.DB {
 	return db
 }
 
-func SaveBlock(data string, payload []byte) {
-	fmt.Printf("Data: %s\nPayload %x\n", data, payload)
+func SaveBlock(hash string, payload []byte) {
+	// fmt.Printf("Saving Block : %s\n Payload : %b\n", hash, payload)
 	err := DB().Update(func(t *bolt.Tx) error {
-		dataBucket := t.Bucket([]byte(dataBucket))
-		err := dataBucket.Put([]byte(data), payload)
+		blocksBucket := t.Bucket([]byte(blocksBucket))
+		err := blocksBucket.Put([]byte(hash), payload)
 		return err
 	})
 	utils.HandleErr(err)
@@ -43,12 +45,27 @@ func SaveBlock(data string, payload []byte) {
 
 func SaveBlockchain(payload []byte) {
 	err := DB().Update(func(t *bolt.Tx) error {
-		blocksBucket := t.Bucket([]byte(blocksBucket))
+		dataBucket := t.Bucket([]byte(dataBucket))
 		// payload == newestHash
-		err := blocksBucket.Put([]byte("NewestHash"), payload)
+		err := dataBucket.Put([]byte(checkpoint), payload)
 		return err
 	})
 	utils.HandleErr(err)
+}
+
+func CheckPoint() []byte {
+	var checkpoint []byte
+
+	DB().View(func(t *bolt.Tx) error {
+		bucket := t.Bucket([]byte(dataBucket))
+		checkpoint = bucket.Get([]byte(checkpoint))
+		return nil
+	})
+
+	if checkpoint == nil {
+		fmt.Println("지금의 checkpoint는 nil입니다 : ", checkpoint)
+	}
+	return checkpoint
 }
 
 /* 블록은 []byte로 변환이 안된다.

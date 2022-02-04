@@ -1,7 +1,10 @@
 package blockchain
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/nomadcoders_review/db"
@@ -17,19 +20,39 @@ type blockchain struct {
 var b *blockchain
 var once sync.Once
 
-func addBlock(data string) {
+func (b *blockchain) restore(data []byte) {
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	utils.HandleErr(decoder.Decode(b))
+
+}
+
+func (b *blockchain) persist() {
+	db.SaveBlockchain(utils.ToBytes(b))
+}
+
+func (b *blockchain) AddBlock(data string) {
 	block := createBlock(data, b.NesestHash, b.Height+1)
-	db.SaveBlock(block.Data, utils.ToBytes(block))
-	db.SaveBlockchain(utils.ToBytes(block.Hash))
+	b.NesestHash = block.Hash
+	b.Height = block.Height
+	b.persist()
 }
 
 func Blockchain() *blockchain {
 	if b == nil {
 		once.Do(func() {
 			b = &blockchain{"", 0}
-			addBlock("Genesis Block")
+			checkPoint := db.CheckPoint()
+			fmt.Printf("NewestHash : %s\nHeight : %d\n", b.NesestHash, b.Height)
+			if checkPoint == nil {
+				fmt.Println("Creating Genesis Block...")
+				b.AddBlock("Genesis Block")
+			} else {
+				fmt.Println("Restoring...")
+				b.restore(checkPoint)
+			}
 		})
 	}
+	fmt.Printf("after once-Do() NewestHash : %s\nHeight : %d\n", b.NesestHash, b.Height)
 	return b
 }
 

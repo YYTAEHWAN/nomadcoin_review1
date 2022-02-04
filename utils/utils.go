@@ -12,9 +12,9 @@ func HandleErr(err error) {
 	}
 }
 
-func ToBytes(v interface{}) []byte {
-	var blockBuffer bytes.Buffer
-	encoder := gob.NewEncoder(&blockBuffer)
-	HandleErr(encoder.Encode(v))
-	return blockBuffer.Bytes()
+func ToBytes(i interface{}) []byte {
+	var aBuffer bytes.Buffer
+	encoder := gob.NewEncoder(&aBuffer)
+	HandleErr(encoder.Encode(i))
+	return aBuffer.Bytes()
 }
