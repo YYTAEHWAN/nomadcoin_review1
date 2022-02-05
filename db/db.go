@@ -17,6 +17,10 @@ const (
 
 var db *bolt.DB
 
+func Close() {
+	DB().Close()
+}
+
 func DB() *bolt.DB {
 	if db == nil {
 		dbPointer, err := bolt.Open(dbName, 0600, nil)
@@ -54,18 +58,31 @@ func SaveBlockchain(payload []byte) {
 }
 
 func CheckPoint() []byte {
-	var checkpoint []byte
+	var data []byte
 
 	DB().View(func(t *bolt.Tx) error {
 		bucket := t.Bucket([]byte(dataBucket))
-		checkpoint = bucket.Get([]byte(checkpoint))
+		data = bucket.Get([]byte(checkpoint))
 		return nil
 	})
 
-	if checkpoint == nil {
-		fmt.Println("지금의 checkpoint는 nil입니다 : ", checkpoint)
+	if data == nil {
+		fmt.Println("지금의 data는 nil입니다 : ", data)
 	}
-	return checkpoint
+	return data
+}
+
+func GetBlock(hash string) []byte {
+	var data []byte
+	DB().View(func(t *bolt.Tx) error {
+		Bucket := t.Bucket([]byte(blocksBucket))
+		data = Bucket.Get([]byte(hash))
+		return nil
+	})
+	if data == nil {
+		fmt.Println("GetBlock 함수의 data nil입니다 : ", data)
+	}
+	return data
 }
 
 /* 블록은 []byte로 변환이 안된다.

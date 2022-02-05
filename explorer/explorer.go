@@ -27,7 +27,7 @@ type homeData struct {
 // http.Reqeust를 사용하기 보다 포인터를 사용한다
 func home(rw http.ResponseWriter, r *http.Request) {
 
-	data := homeData{"Home", blockchain.GetBlockchain().AllBlocks()}
+	data := homeData{"Home", nil}
 	templates.ExecuteTemplate(rw, "home", data)
 }
 
