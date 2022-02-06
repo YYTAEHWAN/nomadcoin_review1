@@ -47,7 +47,7 @@ func SaveBlock(hash string, payload []byte) {
 	utils.HandleErr(err)
 }
 
-func SaveBlockchain(payload []byte) {
+func SaveCheckPoint(payload []byte) {
 	err := DB().Update(func(t *bolt.Tx) error {
 		dataBucket := t.Bucket([]byte(dataBucket))
 		// payload == newestHash

@@ -1,9 +1,10 @@
 package blockchain
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/nomadcoders_review/db"
 	"github.com/nomadcoders_review/utils"
@@ -16,9 +17,8 @@ type Block struct {
 	Height     int    `json:"height"`
 	Difficulty int    `json:"difficulty"`
 	Nonce      int    `json:"nonce"`
+	Timestamp  int    `json:"timestamp"`
 }
-
-const difficulty = 2
 
 var ErrNotFound = errors.New("block not found")
 
@@ -26,8 +26,19 @@ func (b *Block) persist() {
 	db.SaveBlock(b.Hash, utils.ToBytes(b))
 }
 
-func mine() {
-	// 9.1 들어가기 전
+func (b *Block) mine() {
+	target := strings.Repeat("0", b.Difficulty)
+	for {
+		b.Timestamp = int(time.Now().Unix())
+		hash := utils.Hashing(b)
+		fmt.Printf("Hash:%s\nTarget:%s\nNonce:%d\n\n\n", hash, target, b.Nonce)
+		if strings.HasPrefix(hash, target) {
+			b.Hash = hash
+			break
+		} else {
+			b.Nonce++
+		}
+	}
 }
 
 func createBlock(data string, prevHash string, height int) *Block {
@@ -36,12 +47,11 @@ func createBlock(data string, prevHash string, height int) *Block {
 		Hash:       "",
 		PrevHash:   prevHash,
 		Height:     height,
-		Difficulty: difficulty,
+		Difficulty: Blockchain().SetDifficulty(),
 		Nonce:      1,
 	}
-	block.Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(data+prevHash+fmt.Sprint(height))))
-	// 해당 페이지의 blockchain 동기화? 변경? 최신화
-
+	//hashing 해주는 함수가 mine() 인거지
+	block.mine()
 	block.persist()
 	return &block
 }
