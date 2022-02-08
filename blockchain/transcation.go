@@ -84,9 +84,12 @@ func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 					idAndIndex.appendInt(input.Index)
 					testVar = append(testVar, idAndIndex)
 				}
+
 			}asdfasdfasdf
 
 			
+
+			}
 		}
 		for _, tx := range block.Transaction {
 			for index, output := range tx.TxOuts {
