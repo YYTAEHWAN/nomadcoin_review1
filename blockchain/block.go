@@ -11,13 +11,13 @@ import (
 )
 
 type Block struct {
-	Data       string `json:"data"`
-	Hash       string `json:"hash"`
-	PrevHash   string `json:"pervHash,omitempty"`
-	Height     int    `json:"height"`
-	Difficulty int    `json:"difficulty"`
-	Nonce      int    `json:"nonce"`
-	Timestamp  int    `json:"timestamp"`
+	Hash        string `json:"hash"`
+	PrevHash    string `json:"pervHash,omitempty"`
+	Height      int    `json:"height"`
+	Difficulty  int    `json:"difficulty"`
+	Nonce       int    `json:"nonce"`
+	Timestamp   int    `json:"timestamp"`
+	Transaction []*Tx  `json:"transaction"`
 }
 
 var ErrNotFound = errors.New("block not found")
@@ -41,17 +41,18 @@ func (b *Block) mine() {
 	}
 }
 
-func createBlock(data string, prevHash string, height int) *Block {
+func createBlock(prevHash string, height int) *Block {
 	block := Block{
-		Data:       data,
 		Hash:       "",
 		PrevHash:   prevHash,
 		Height:     height,
 		Difficulty: Blockchain().SetDifficulty(),
 		Nonce:      1,
+		// Transaction: []*Tx{makeCoinbaseTx("taehwan")},
 	}
 	//hashing 해주는 함수가 mine() 인거지
 	block.mine()
+	block.Transaction = Mempool.TxToConfirm() // coinbase + mempool의 Tx 을 합쳐서 confirm
 	block.persist()
 	return &block
 }

@@ -32,16 +32,22 @@ type urlDescription struct {
 	Payload     string `json:"payload,omitempty"`
 }
 
-func (u urlDescription) String() string {
-	return "Hello I'm URL Description"
-}
-
-type addBlockBody struct {
-	Message string
+type balanceResponse struct {
+	Address      string `json:"address"`
+	TotalBalance int    `json:"totalBalance"`
 }
 
 type errResponse struct {
 	ErrMessage string `json:"errMessage"`
+}
+
+type addTxPayload struct {
+	To     string
+	Amount int
+}
+
+func (u urlDescription) String() string {
+	return "Hello I'm URL Description"
 }
 
 func documentation(rw http.ResponseWriter, r *http.Request) {
@@ -72,6 +78,11 @@ func documentation(rw http.ResponseWriter, r *http.Request) {
 			Method:      "GET",
 			Description: "See A Block",
 		},
+		{
+			URL:         url("/balance/{address}"),
+			Method:      "GET",
+			Description: "See balance for an address",
+		},
 	}
 	rw.Header().Add("Content-Type", "application/json")
 	// b, err := json.Marshal(data)
@@ -100,9 +111,8 @@ func blocks(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Add("Content-Type", "application/json")
 		json.NewEncoder(rw).Encode(blockchain.Blockchain().Blocks())
 	case "POST":
-		var addBlockBody addBlockBody
-		utils.HandleErr(json.NewDecoder(r.Body).Decode(&addBlockBody))
-		blockchain.Blockchain().AddBlock(addBlockBody.Message)
+		// utils.HandleErr(json.NewDecoder(r.Body).Decode()) 아마 나중엔 Tx를 가져오지 않을까
+		blockchain.Blockchain().AddBlock()
 		rw.WriteHeader(http.StatusCreated)
 	}
 }
@@ -120,6 +130,45 @@ func status(rw http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(rw).Encode(blockchain.Blockchain())
 }
 
+func balance(rw http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	address := vars["address"]
+	encoder := json.NewEncoder(rw)
+
+	// totalBool := r.URL.Query().Get("total")
+	// if totalBool == "true" {
+	// 	total := blockchain.TotalBalanceByAddress(address)
+	// 	utils.HandleErr(encoder.Encode(balanceResponse{address, total})) // 여러 개의 변수를 보내고 싶을 때
+	// } else {
+	// 	OwnedTxOuts := blockchain.Blockchain().BalanceByAddress(address)
+	// 	utils.HandleErr(encoder.Encode(OwnedTxOuts))
+	// }
+
+	totlaResult := r.URL.Query().Get("total")
+	switch totlaResult {
+	case "true":
+		amount := blockchain.Blockchain().TotalBalanceByAddress(address)
+		utils.HandleErr(encoder.Encode(balanceResponse{address, amount})) // 여러 개의 변수를 보내고 싶을 때
+	default:
+		OwnedTxOuts := blockchain.Blockchain().BalanceByAddress(address)
+		utils.HandleErr(encoder.Encode(OwnedTxOuts))
+	}
+}
+
+func mempool(rw http.ResponseWriter, r *http.Request) {
+	utils.HandleErr(json.NewEncoder(rw).Encode(blockchain.Mempool.Txs))
+}
+
+func transactions(rw http.ResponseWriter, r *http.Request) {
+	var payload addTxPayload
+	utils.HandleErr(json.NewDecoder(r.Body).Decode(&payload))
+	err := blockchain.Mempool.AddTx(payload.To, payload.Amount)
+	if err != nil {
+		json.NewEncoder(rw).Encode(errResponse{"not enough funds"}) // 잔액이 부족합니다의 의미
+	}
+	rw.WriteHeader(http.StatusCreated)
+}
+
 func Strat(aPort int) {
 	router := mux.NewRouter()
 	router.Use(jsonContentTypeMiddleware)
@@ -127,6 +176,9 @@ func Strat(aPort int) {
 	router.HandleFunc("/blocks", blocks).Methods("GET", "POST")
 	router.HandleFunc("/status", status)
 	router.HandleFunc("/blocks/{hash:[a-f0-9]+}", block).Methods("GET")
+	router.HandleFunc("/balance/{address}", balance)
+	router.HandleFunc("/mempool", mempool)
+	router.HandleFunc("/transactions", transactions).Methods("POST")
 	fmt.Printf("Listening on http://localhost:%d\n", aPort)
 	port = fmt.Sprintf(":%d", aPort)
 	log.Fatal(http.ListenAndServe(port, router))
