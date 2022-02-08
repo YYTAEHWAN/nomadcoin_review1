@@ -84,13 +84,9 @@ func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 					idAndIndex.appendInt(input.Index)
 					testVar = append(testVar, idAndIndex)
 				}
-
-			}asdfasdfasdf
-
-			
-
 			}
 		}
+	}
 		for _, tx := range block.Transaction {
 			for index, output := range tx.TxOuts {
 				if output.Owner == address { // 주소가 같으면 일단 요구하는 사람의 TxOut들이고
