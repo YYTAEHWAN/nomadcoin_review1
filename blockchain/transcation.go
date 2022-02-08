@@ -51,6 +51,19 @@ func (t *Tx) MakeTxTimestamp() {
 	t.Timestamp = int(time.Now().Unix())
 }
 
+type idAndIndexSlice struct {
+	InputTxId string
+	Index     []int
+}
+
+func (i idAndIndexSlice) appendInt(index int) {
+	i.Index = append(i.Index, index)
+}
+
+// type testVar struct {
+// 	v []*idAndIndexSlice
+// }
+
 func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 
 	var uTxOuts []*UTxOut
@@ -58,16 +71,21 @@ func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 	creatorTx := make(map[string]bool)
 	creatorTxIndex := make(map[string]int)
 
+	var testVar []*idAndIndexSlice
+
 	for _, block := range blocks {
 		for _, tx := range block.Transaction {
 			for _, input := range tx.TxIns {
 				if input.Owner == address {
 					creatorTx[input.TxId] = true
 					creatorTxIndex[input.TxId] = input.Index
+
+					idAndIndex := &idAndIndexSlice{input.TxId, nil}
+					idAndIndex.appendInt(input.Index)
+					testVar = append(testVar, idAndIndex)
 				}
 			}
 		}
-
 		for _, tx := range block.Transaction {
 			for index, output := range tx.TxOuts {
 				if output.Owner == address { // 주소가 같으면 일단 요구하는 사람의 TxOut들이고
