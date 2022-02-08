@@ -150,7 +150,7 @@ func balance(rw http.ResponseWriter, r *http.Request) {
 		amount := blockchain.Blockchain().TotalBalanceByAddress(address)
 		utils.HandleErr(encoder.Encode(balanceResponse{address, amount})) // 여러 개의 변수를 보내고 싶을 때
 	default:
-		OwnedTxOuts := blockchain.Blockchain().BalanceByAddress(address)
+		OwnedTxOuts := blockchain.Blockchain().UTxOutsByAddress(address)
 		utils.HandleErr(encoder.Encode(OwnedTxOuts))
 	}
 }

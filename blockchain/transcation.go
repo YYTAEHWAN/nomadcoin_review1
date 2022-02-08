@@ -70,22 +70,16 @@ func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 					if ok := creatorIds[tx.Id]; !ok {
 						uTxOut := &UTxOut{tx.Id, index, output.Amount}
 						uTxOuts = append(uTxOuts, uTxOut)
-						// 이럴 경우 내가 걱정되는 건
-						// input에 사용된 txId는 output의 txId라는 건데
-						// 한 블록에 같은 주소로 여러개의 output Txs가 생성되었을 때
-						// 6개 TxOut 중 4개만 쓰이고 2개는 안쓰였다면?
-						// 그래도 이 로직에 따르면 그 2개는 spentTxOut 으로 분류될텐데 이 로직을 어떻게 고쳐야 할까
 					}
 				}
 			}
 		}
 	}
-	// 의문 2 TxIn 은 여러개의 TxOut이 모여서 만들어진다고 했는데
-	// 그럼 하나의 TxIn은 하나의 TxId, Index를 만드는데 어떻게 여러개의 TxOut을 합칠 수 있지?
 
-	// 의문 3
-	// 그럼 어떻게 해결하지?
-
+	// 의문들 다 해결
+	// 한 Tx에는 TxIns, TxOuts 가 있는데
+	// TxIns 는 여러개의 TxOut을 합쳐 TxIns를 하나의 돈 덩어리로 보게끔 하는 것이고
+	// TxOuts 는 오직 두개 이하의 TxOut만 존재할 수 있음  ex) 상대방 주소로 하나, 나에게로 잔돈 하나 이렇게 두개
 	return uTxOuts
 }
 
@@ -120,6 +114,35 @@ func makeTx(from string, to string, amount int) (*Tx, error) {
 		return nil, errors.New("not enough money")
 	}
 
+	var txOuts []*TxOut
+	var txIns []*TxIn
+	total := 0
+
+	for _, uTxOut := range b.UTxOutsByAddress(from) {
+		if total >= amount {
+			break
+		}
+		total += uTxOut.Amount
+		txIn := &TxIn{uTxOut.TxID, uTxOut.Index, from}
+		txIns = append(txIns, txIn)
+	}
+
+	if change := total - amount; change != 0 {
+		changeTxOut := &TxOut{from, change}
+		txOuts = append(txOuts, changeTxOut)
+	}
+
+	totxOut := &TxOut{to, amount}
+	txOuts = append(txOuts, totxOut)
+	tx := &Tx{
+		Id:        "",
+		Timestamp: int(time.Now().Unix()),
+		TxIns:     txIns,
+		TxOuts:    txOuts,
+	}
+	tx.makeId()
+
+	return tx, nil
 }
 
 func (m *mempool) AddTx(to string, amount int) error {
