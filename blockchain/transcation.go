@@ -52,7 +52,6 @@ func (t *Tx) MakeTxTimestamp() {
 }
 
 func isOnMempool(uTxOut *UTxOut) bool {
-
 	exists := false
 Outer:
 	for _, mtx := range Mempool.Txs {
@@ -66,12 +65,12 @@ Outer:
 	return exists
 }
 
-func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
+func UTxOutsByAddress(address string, b *blockchain) []*UTxOut {
 
 	var uTxOuts []*UTxOut
 	creatorIds := make(map[string]bool)
 
-	for _, block := range Blockchain().Blocks() {
+	for _, block := range Blocks(b) {
 		for _, tx := range block.Transaction {
 			for _, input := range tx.TxIns {
 				if input.Owner == address {
@@ -98,9 +97,9 @@ func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 	return uTxOuts
 }
 
-func (b *blockchain) TotalBalanceByAddress(address string) int {
+func TotalBalanceByAddress(address string, b *blockchain) int {
 	var total int
-	txOuts := b.UTxOutsByAddress(address)
+	txOuts := UTxOutsByAddress(address, b)
 	for _, txOut := range txOuts {
 		total += txOut.Amount
 	}
@@ -125,7 +124,7 @@ func makeCoinbaseTx(address string) *Tx {
 }
 
 func makeTx(from string, to string, amount int) (*Tx, error) {
-	if Blockchain().TotalBalanceByAddress(from) < amount {
+	if TotalBalanceByAddress(from, Blockchain()) < amount {
 		return nil, errors.New("not enough money-1")
 	}
 
@@ -133,7 +132,7 @@ func makeTx(from string, to string, amount int) (*Tx, error) {
 	var txIns []*TxIn
 	total := 0
 
-	for _, uTxOut := range b.UTxOutsByAddress(from) {
+	for _, uTxOut := range UTxOutsByAddress(from, Blockchain()) {
 		if total >= amount {
 			break
 		}

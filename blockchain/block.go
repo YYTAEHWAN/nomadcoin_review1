@@ -22,7 +22,7 @@ type Block struct {
 
 var ErrNotFound = errors.New("block not found")
 
-func (b *Block) persist() {
+func (b *Block) persistBlock() {
 	db.SaveBlock(b.Hash, utils.ToBytes(b))
 }
 
@@ -42,19 +42,19 @@ func (b *Block) mine() {
 	}
 }
 
-func createBlock(prevHash string, height int) *Block {
+func createBlock(prevHash string, height int, diff int) *Block {
 	block := Block{
 		Hash:       "",
 		PrevHash:   prevHash,
 		Height:     height,
-		Difficulty: Blockchain().SetDifficulty(),
+		Difficulty: diff,
 		Nonce:      1,
 		// Transaction: []*Tx{makeCoinbaseTx("taehwan")},
 	}
 	//hashing 해주는 함수가 mine() 인거지
 	block.mine()
 	block.Transaction = Mempool.TxToConfirm() // coinbase + mempool의 Tx 을 합쳐서 confirm
-	block.persist()
+	block.persistBlock()
 	return &block
 }
 

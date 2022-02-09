@@ -25,8 +25,8 @@ const (
 	allowedRange       int = 2
 )
 
-func recalculateDifficulty() int {
-	blocks := b.Blocks()
+func recalculateDifficulty(b *blockchain) int {
+	blocks := Blocks(b)
 	newestBlock := blocks[0]
 	lastRecalculateBlock := blocks[difficultyInterval-1]
 	actualTime := (newestBlock.Timestamp / 60) - (lastRecalculateBlock.Timestamp / 60)
@@ -39,13 +39,11 @@ func recalculateDifficulty() int {
 	return b.CurrentDifficulty
 }
 
-func (b blockchain) SetDifficulty() int {
+func getDifficulty(b *blockchain) int {
 	if b.Height == 0 {
 		return defaultDifficulty
 	} else if b.Height%difficultyInterval == 0 {
-		return recalculateDifficulty()
-		//recalculate
-		// bitcoin 은 2016개의 블록마다 난이도 재조정
+		return recalculateDifficulty(b)
 	}
 	return b.CurrentDifficulty
 }
@@ -54,40 +52,38 @@ func (b *blockchain) restore(data []byte) {
 	utils.FromBytes(b, data)
 }
 
-func (b *blockchain) persist() {
+func persistBlockchain(b *blockchain) {
 	db.SaveCheckPoint(utils.ToBytes(b))
 }
 
-func (b *blockchain) AddBlock() {
-	block := createBlock(b.NewestHash, b.Height+1)
+func AddBlock(b *blockchain) {
+	block := createBlock(b.NewestHash, b.Height+1, getDifficulty(b))
 	b.NewestHash = block.Hash
 	b.Height = block.Height
 	b.CurrentDifficulty = block.Difficulty
-	b.persist()
+	persistBlockchain(b)
 }
 
 func Blockchain() *blockchain {
-	if b == nil {
-		once.Do(func() {
-			b = &blockchain{"", 0, 0}
-			checkPoint := db.CheckPoint()
-			//fmt.Printf("NewestHash : %s\nHeight : %d\n", b.NewestHash, b.Height)
-			if checkPoint == nil {
-				fmt.Println("Creating Genesis Block...")
-				b.AddBlock()
-			} else {
-				fmt.Println("Restoring...")
-				b.restore(checkPoint)
-			}
-		})
-	}
+	once.Do(func() {
+		b = &blockchain{"", 0, 0}
+		checkPoint := db.CheckPoint()
+		//fmt.Printf("NewestHash : %s\nHeight : %d\n", b.NewestHash, b.Height)
+		if checkPoint == nil {
+			fmt.Println("Creating Genesis Block...")
+			AddBlock(b)
+		} else {
+			fmt.Println("Restoring...")
+			b.restore(checkPoint)
+		}
+	})
 	//fmt.Printf("after once-Do() NewestHash : %s\nHeight : %d\n", b.NewestHash, b.Height)
 	return b
 }
 
 // blockchain의 NewesetHash를 hashCursor로 두고
 // FindBlock() 함수를 통해 block을 찾고 해당 block의 PrevHash로 계속 이동하여 모든 블록을 담아 리턴하는 함수
-func (b blockchain) Blocks() []*Block {
+func Blocks(b *blockchain) []*Block {
 	var blocks []*Block
 	hashCursor := b.NewestHash
 	for {

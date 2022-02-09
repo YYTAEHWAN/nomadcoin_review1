@@ -109,10 +109,10 @@ func blocks(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		rw.Header().Add("Content-Type", "application/json")
-		json.NewEncoder(rw).Encode(blockchain.Blockchain().Blocks())
+		json.NewEncoder(rw).Encode(blockchain.Blocks(blockchain.Blockchain()))
 	case "POST":
 		// utils.HandleErr(json.NewDecoder(r.Body).Decode()) 아마 나중엔 Tx를 가져오지 않을까
-		blockchain.Blockchain().AddBlock()
+		blockchain.AddBlock(blockchain.Blockchain())
 		rw.WriteHeader(http.StatusCreated)
 	}
 }
@@ -147,10 +147,10 @@ func balance(rw http.ResponseWriter, r *http.Request) {
 	totlaResult := r.URL.Query().Get("total")
 	switch totlaResult {
 	case "true":
-		amount := blockchain.Blockchain().TotalBalanceByAddress(address)
+		amount := blockchain.TotalBalanceByAddress(address, blockchain.Blockchain())
 		utils.HandleErr(encoder.Encode(balanceResponse{address, amount})) // 여러 개의 변수를 보내고 싶을 때
 	default:
-		OwnedTxOuts := blockchain.Blockchain().UTxOutsByAddress(address)
+		OwnedTxOuts := blockchain.UTxOutsByAddress(address, blockchain.Blockchain())
 		utils.HandleErr(encoder.Encode(OwnedTxOuts))
 	}
 }

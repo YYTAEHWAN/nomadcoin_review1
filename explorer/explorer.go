@@ -38,7 +38,7 @@ func add(rw http.ResponseWriter, r *http.Request) {
 	case "POST":
 		//r.ParseForm()
 		//data := r.FormValue("blockData") 아마 Tx로 대체하겠죠
-		blockchain.Blockchain().AddBlock()
+		blockchain.AddBlock(blockchain.Blockchain())
 		http.Redirect(rw, r, "/", http.StatusPermanentRedirect)
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
