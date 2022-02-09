@@ -34,6 +34,7 @@ func (b *Block) mine() {
 		fmt.Printf("Hash:%s\nTarget:%s\nNonce:%d\n\n\n", hash, target, b.Nonce)
 		if strings.HasPrefix(hash, target) {
 			b.Hash = hash
+			fmt.Printf("블록 채굴 성공!\n\n")
 			break
 		} else {
 			b.Nonce++

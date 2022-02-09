@@ -51,6 +51,21 @@ func (t *Tx) MakeTxTimestamp() {
 	t.Timestamp = int(time.Now().Unix())
 }
 
+func isOnMempool(uTxOut *UTxOut) bool {
+
+	exists := false
+Outer:
+	for _, mtx := range Mempool.Txs {
+		for _, input := range mtx.TxIns {
+			if input.TxId == uTxOut.TxID && input.Index == uTxOut.Index {
+				exists = true
+				break Outer
+			}
+		}
+	}
+	return exists
+}
+
 func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 
 	var uTxOuts []*UTxOut
@@ -61,15 +76,15 @@ func (b *blockchain) UTxOutsByAddress(address string) []*UTxOut {
 			for _, input := range tx.TxIns {
 				if input.Owner == address {
 					creatorIds[input.TxId] = true
-
 				}
 			}
-
 			for index, output := range tx.TxOuts {
 				if output.Owner == address {
 					if ok := creatorIds[tx.Id]; !ok {
 						uTxOut := &UTxOut{tx.Id, index, output.Amount}
-						uTxOuts = append(uTxOuts, uTxOut)
+						if !(isOnMempool(uTxOut)) {
+							uTxOuts = append(uTxOuts, uTxOut)
+						}
 					}
 				}
 			}
@@ -111,7 +126,7 @@ func makeCoinbaseTx(address string) *Tx {
 
 func makeTx(from string, to string, amount int) (*Tx, error) {
 	if Blockchain().TotalBalanceByAddress(from) < amount {
-		return nil, errors.New("not enough money")
+		return nil, errors.New("not enough money-1")
 	}
 
 	var txOuts []*TxOut
