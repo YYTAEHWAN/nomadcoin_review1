@@ -65,6 +65,10 @@ Outer:
 	return exists
 }
 
+func (utx *UTxOut) laterChange() {
+
+}
+
 func UTxOutsByAddress(address string, b *blockchain) []*UTxOut {
 
 	var uTxOuts []*UTxOut
@@ -84,6 +88,12 @@ func UTxOutsByAddress(address string, b *blockchain) []*UTxOut {
 						if !(isOnMempool(uTxOut)) {
 							uTxOuts = append(uTxOuts, uTxOut)
 						}
+						// 이걸 고치게 되면 정말 큰 문제가 생기기 때문에 그냥 지나가도록 하겠다
+						// 이유 1. 해당 input TxIns에 사용된 TxOut을 추적하여 찾아오는 함수를 만들어야 함 -> 할 수 있을지도 모름
+						// 강력한 이유 2. 같은 주소로 돈을 보내는 여러개의 TxOut을 만들게 됐을 때 TxOut1, 2, 3이라 하자
+						// 나중에 1,2,3 중 1,2 만 사용했다고 했을 때, 이 로직에 의하면 1과 2의 TxId는 사용된 TxId라 간주되어
+						// TxOut3 은 사용되지 않았지만 사용되었다고 분류되어 사용하지 못하는 돈이 됨
+						// 그걸 해결해주는 로직도 따로 만들어야 하는데 머리를 조금 굴려봤을 때 굉장히 복잡하다고 예상됨
 					}
 				}
 			}
