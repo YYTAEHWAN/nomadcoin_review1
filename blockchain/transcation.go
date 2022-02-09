@@ -95,6 +95,7 @@ func UTxOutsByAddress(address string, b *blockchain) []*UTxOut {
 						// TxOut3 은 사용되지 않았지만 사용되었다고 분류되어 사용하지 못하는 돈이 됨
 						// 그걸 해결해주는 로직도 따로 만들어야 하는데 머리를 조금 굴려봤을 때 굉장히 복잡하다고 예상됨
 						// 이건 시간상의 이유로 실패했으니 git 하는법이라도 배워가겠음
+						// git 업스트림 사용 2
 					}
 				}
 			}
