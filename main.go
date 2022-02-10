@@ -8,4 +8,5 @@ import (
 func main() {
 	blockchain.Blockchain()
 	cli.Start()
+	// i hope i can fix this situation
 }
