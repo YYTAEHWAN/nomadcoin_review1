@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nomadcoders_review/utils"
+	"github.com/nomadcoders_review/wallet"
 )
 
 const (
@@ -160,7 +161,7 @@ func makeTx(from string, to string, amount int) (*Tx, error) {
 }
 
 func (m *mempool) AddTx(to string, amount int) error {
-	tx, err := makeTx("taehwan", to, amount)
+	tx, err := makeTx(wallet.Wallet().Address, to, amount)
 	if err != nil {
 		return errors.New("not enough money")
 	}
@@ -169,7 +170,7 @@ func (m *mempool) AddTx(to string, amount int) error {
 }
 
 func (m *mempool) TxToConfirm() []*Tx {
-	coinbase := makeCoinbaseTx("taehwan")
+	coinbase := makeCoinbaseTx(wallet.Wallet().Address)
 	txs := m.Txs
 	txs = append(txs, coinbase)
 	m.Txs = nil

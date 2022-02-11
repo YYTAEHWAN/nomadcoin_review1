@@ -1,19 +1,20 @@
 package wallet
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/nomadcoders_review/utils"
 )
 
 const (
-	message       string = "i love you"
-	privateKey    string = "3077020101042067790203cc8b6089947d592f11273330ebcb87ff4e2b532bd8a02d91c7c2a263a00a06082a8648ce3d030107a144034200047f6419b8b1e72c9709fbe31eb948a3162f8083f9ce93edc5a77abe2e90522f32447c19557811e487cb6b255957f5db4aebfd65548fe98a7e9a505c38b2b423cd"
-	hashedMessage string = "1c5863cd55b5a4413fd59f054af57ba3c75c0698b3851d70f99b8de2d5c7338f"
-	signature     string = "4ad1fcd38eacc6f284974bda47722700499b33124067325797332d80df9df915e17ce5d2aa2dd1ccc0bfc85f61cf1467e50dc9d17f9b52990d48b0f2dd38b7d6"
+	fileName = "nomadcoin.wallet"
 )
 
 func reminder() {
@@ -33,15 +34,11 @@ func reminder() {
 
 	signature := append(r.Bytes(), s.Bytes()...)
 	fmt.Printf("signature : %x\n\n", signature)
-	*/
 
-}
-
-func Start() {
-
+	/////////////////////////////
 	priKeyAsBytes, err := hex.DecodeString(privateKey)
 	utils.HandleErr(err)
-	_, err = x509.ParseECPrivateKey(priKeyAsBytes)
+	restoredKey, err := x509.ParseECPrivateKey(priKeyAsBytes)
 	utils.HandleErr(err)
 
 	sigBytes, err := hex.DecodeString(signature)
@@ -49,13 +46,121 @@ func Start() {
 	rBytes := sigBytes[:len(sigBytes)/2]
 	sBytes := sigBytes[len(sigBytes)/2:]
 
-	fmt.Printf("sigBytes : %d\n\n", sigBytes)
-	fmt.Printf("rBytes : %d\n\n", rBytes)
-	fmt.Printf("sBytes : %d\n\n", sBytes)
+	// fmt.Printf("sigBytes : %d\n\n", sigBytes)
+	// fmt.Printf("rBytes : %d\n\n", rBytes)
+	// fmt.Printf("sBytes : %d\n\n", sBytes)
+
+	hashAsBytes, err := hex.DecodeString(hashedMessage)
+	utils.HandleErr(err)
 
 	var bigR, bigS = big.Int{}, big.Int{}
-	r := bigR.SetBytes(rBytes)
-	s := bigS.SetBytes(sBytes)
+	bigR.SetBytes(rBytes)
+	bigS.SetBytes(sBytes)
 
-	fmt.Printf("%x\n\n%x\n\n", r, s)
+	ok := ecdsa.Verify(&restoredKey.PublicKey, hashAsBytes, &bigR, &bigS)
+	fmt.Println(ok)
+	*/
+
+}
+
+type wallet struct {
+	privateKey *ecdsa.PrivateKey
+	Address    string
+}
+
+var w *wallet
+
+func hasWalletFile() bool {
+	_, err := os.Stat(fileName)
+	return !os.IsNotExist(err)
+	// no -> 존재 안함?
+	// yes -> 존재함?
+}
+
+func createPrivKey() *ecdsa.PrivateKey {
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	utils.HandleErr(err)
+	return privKey
+}
+
+func persistPrivKey(privKey *ecdsa.PrivateKey) {
+	privKeyAsBytes, err := x509.MarshalECPrivateKey(privKey)
+	utils.HandleErr(err)
+	err = os.WriteFile(fileName, privKeyAsBytes, 0644)
+	utils.HandleErr(err)
+}
+
+func restoreKey() *ecdsa.PrivateKey {
+	privKeyAsBytes, err := os.ReadFile(fileName)
+	utils.HandleErr(err)
+	privKey, err := x509.ParseECPrivateKey(privKeyAsBytes)
+	utils.HandleErr(err)
+	return privKey
+}
+
+func aFromk(privkey *ecdsa.PrivateKey) string {
+	z := append(privkey.X.Bytes(), privkey.Y.Bytes()...)
+	return fmt.Sprintf("%x", z)
+}
+
+func sign(payload string, w *wallet) string {
+	payloadAsB, err := hex.DecodeString(payload)
+	utils.HandleErr(err)
+	r, s, err := ecdsa.Sign(rand.Reader, w.privateKey, payloadAsB)
+	utils.HandleErr(err)
+	signature := append(r.Bytes(), s.Bytes()...)
+	return fmt.Sprintf("%x", signature)
+}
+
+func restoreSig(signature string) (*big.Int, *big.Int, error){
+	sigAsB, err := hex.DecodeString(signature)
+	if err != nil {
+		return nil,nil, err
+	}
+	rBytes := sigAsB[:len(sigAsB)/2]
+	sBytes := sigAsB[len(sigAsB)/2:]
+	bigR, bigS := &big.Int{}, &big.Int{}
+	bigR.SetBytes(rBytes)
+	bigS.SetBytes(sBytes)
+
+	return bigR, bigS, nil
+}
+
+func verify(signature, payload, publicKey string) bool {
+
+	publiAsB, err := hex.DecodeString(publicKey)
+	utils.HandleErr(err)
+
+
+	payloadAsB, err := hex.DecodeString(payload)
+	utils.HandleErr(err)
+	r, s, err := restoreSig(signature)
+	utils.HandleErr(err)
+	
+
+
+	ok := ecdsa.Verify(, payloadAsB, r, s)
+	return ok
+}
+
+func Wallet() *wallet {
+	if w == nil {
+		w = &wallet{}
+		// has a wallet already?
+		if hasWalletFile() {
+			// yes -> restore from file
+			w.privateKey = restoreKey()
+		} else {
+			// no -> create new privKey, save to file
+			privKey := createPrivKey()
+			persistPrivKey(privKey)
+			w.privateKey = privKey
+		}
+		w.Address = aFromk(w.privateKey)
+	}
+	return w
+}
+
+func Start() {
+	Wallet()
 }
