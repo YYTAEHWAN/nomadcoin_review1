@@ -17,8 +17,9 @@ const (
 	fileName = "nomadcoin.wallet"
 )
 
+/*
 func reminder() {
-	/*privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	utils.HandleErr(err)
 
 	keyAsBytes, err := x509.MarshalECPrivateKey(privateKey)
@@ -59,9 +60,8 @@ func reminder() {
 
 	ok := ecdsa.Verify(&restoredKey.PublicKey, hashAsBytes, &bigR, &bigS)
 	fmt.Println(ok)
-	*/
-
 }
+*/
 
 type wallet struct {
 	privateKey *ecdsa.PrivateKey
@@ -98,48 +98,56 @@ func restoreKey() *ecdsa.PrivateKey {
 	return privKey
 }
 
-func aFromk(privkey *ecdsa.PrivateKey) string {
-	z := append(privkey.X.Bytes(), privkey.Y.Bytes()...)
+func encodeBigInts(a, b []byte) string {
+	z := append(a, b...)
 	return fmt.Sprintf("%x", z)
 }
 
-func sign(payload string, w *wallet) string {
+func aFromk(privkey *ecdsa.PrivateKey) string {
+	return encodeBigInts(privkey.X.Bytes(), privkey.Y.Bytes())
+}
+
+func Sign(payload string, w *wallet) string {
 	payloadAsB, err := hex.DecodeString(payload)
 	utils.HandleErr(err)
 	r, s, err := ecdsa.Sign(rand.Reader, w.privateKey, payloadAsB)
 	utils.HandleErr(err)
-	signature := append(r.Bytes(), s.Bytes()...)
-	return fmt.Sprintf("%x", signature)
+	return encodeBigInts(r.Bytes(), s.Bytes())
 }
 
-func restoreSig(signature string) (*big.Int, *big.Int, error){
-	sigAsB, err := hex.DecodeString(signature)
+func restoreBigInts(signature string) (*big.Int, *big.Int, error) {
+	bytes, err := hex.DecodeString(signature)
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
-	rBytes := sigAsB[:len(sigAsB)/2]
-	sBytes := sigAsB[len(sigAsB)/2:]
-	bigR, bigS := &big.Int{}, &big.Int{}
-	bigR.SetBytes(rBytes)
-	bigS.SetBytes(sBytes)
+	firstHalfBytes := bytes[:len(bytes)/2]
+	lastHalfBytes := bytes[len(bytes)/2:]
+	bigA, bigB := &big.Int{}, &big.Int{}
+	bigA.SetBytes(firstHalfBytes)
+	bigB.SetBytes(lastHalfBytes)
 
-	return bigR, bigS, nil
+	return bigA, bigB, nil
 }
 
-func verify(signature, payload, publicKey string) bool {
-
-	publiAsB, err := hex.DecodeString(publicKey)
+func Verify(signature, payload, address string) bool {
+	fmt.Println("---wallet.go에 있는 Verify함수 실행---")
+	r, s, err := restoreBigInts(signature)
 	utils.HandleErr(err)
 
+	x, y, err := restoreBigInts(address)
+	utils.HandleErr(err)
+	publicKey := ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
+	}
 
 	payloadAsB, err := hex.DecodeString(payload)
 	utils.HandleErr(err)
-	r, s, err := restoreSig(signature)
-	utils.HandleErr(err)
-	
 
-
-	ok := ecdsa.Verify(, payloadAsB, r, s)
+	ok := ecdsa.Verify(&publicKey, payloadAsB, r, s)
+	fmt.Println("Verify의 값 ok는 ", ok)
+	fmt.Println("---wallet.go에 있는 Verify함수 종료---")
 	return ok
 }
 

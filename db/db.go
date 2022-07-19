@@ -2,13 +2,14 @@ package db
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/boltdb/bolt"
 	"github.com/nomadcoders_review/utils"
+	bolt "go.etcd.io/bbolt"
 )
 
 const (
-	dbName       = "blockchain.db"
+	dbName       = "blockchain"
 	dataBucket   = "data"
 	blocksBucket = "blocks"
 
@@ -17,13 +18,18 @@ const (
 
 var db *bolt.DB
 
+func getPort() string {
+	port := os.Args[2][6:]
+	return fmt.Sprintf("%s_%s.db", dbName, port)
+}
+
 func Close() {
 	DB().Close()
 }
 
 func DB() *bolt.DB {
 	if db == nil {
-		dbPointer, err := bolt.Open(dbName, 0600, nil)
+		dbPointer, err := bolt.Open(getPort(), 0600, nil)
 		utils.HandleErr(err)
 		db = dbPointer
 		db.Update(func(t *bolt.Tx) error {
@@ -83,6 +89,15 @@ func GetBlock(hash string) []byte {
 		fmt.Println("GetBlock 함수의 data nil입니다 : ", data)
 	}
 	return data
+}
+
+func EmptyBlocks() {
+	DB().Update(func(t *bolt.Tx) error {
+		utils.HandleErr(t.DeleteBucket([]byte(blocksBucket)))
+		_, err := t.CreateBucket([]byte(blocksBucket))
+		utils.HandleErr(err)
+		return nil
+	})
 }
 
 /* 블록은 []byte로 변환이 안된다.

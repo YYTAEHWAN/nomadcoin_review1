@@ -8,7 +8,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nomadcoders_review/blockchain"
+	"github.com/nomadcoders_review/p2p"
 	"github.com/nomadcoders_review/utils"
+	"github.com/nomadcoders_review/wallet"
 )
 
 var port string
@@ -46,6 +48,15 @@ type addTxPayload struct {
 	Amount int
 }
 
+type myWalletResponse struct {
+	Address string
+}
+
+type addPeerPayload struct {
+	Address string
+	Port    string
+}
+
 func (u urlDescription) String() string {
 	return "Hello I'm URL Description"
 }
@@ -55,7 +66,7 @@ func documentation(rw http.ResponseWriter, r *http.Request) {
 		{
 			URL:         url("/"),
 			Method:      "GET",
-			Description: "See Documentaion",
+			Description: "See Documentaion", // 설명
 		},
 		{
 			URL:         url("/blocks"),
@@ -83,6 +94,21 @@ func documentation(rw http.ResponseWriter, r *http.Request) {
 			Method:      "GET",
 			Description: "See balance for an address",
 		},
+		{
+			URL:         url("/ws"),
+			Method:      "GET",
+			Description: "Upgrade to Web Socket",
+		},
+		{
+			URL:         url("/peers"),
+			Method:      "GET",
+			Description: "see peers",
+		},
+		{
+			URL:         url("/peers"),
+			Method:      "POST",
+			Description: "Add a peer",
+		},
 	}
 	rw.Header().Add("Content-Type", "application/json")
 	// b, err := json.Marshal(data)
@@ -91,8 +117,8 @@ func documentation(rw http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(rw).Encode(data) // 위에 3개와 같음
 }
 
+// 사용자가 전해준 변수를 받기 위해 사용하는 변수 추출 함수
 func block(rw http.ResponseWriter, r *http.Request) {
-	// 사용자가 전해준 변수를 받기 위해 사용하는 변수 추출 함수
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 	block, err := blockchain.FindBlock(hash)
@@ -112,7 +138,8 @@ func blocks(rw http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(rw).Encode(blockchain.Blocks(blockchain.Blockchain()))
 	case "POST":
 		// utils.HandleErr(json.NewDecoder(r.Body).Decode()) 아마 나중엔 Tx를 가져오지 않을까
-		blockchain.AddBlock(blockchain.Blockchain())
+		newBlock := blockchain.AddBlock(blockchain.Blockchain())
+		p2p.BroadcastNewBlock(newBlock)
 		rw.WriteHeader(http.StatusCreated)
 	}
 }
@@ -126,8 +153,7 @@ func jsonContentTypeMiddleware(next http.Handler) http.Handler {
 }
 
 func status(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(blockchain.Blockchain())
+	blockchain.Status(blockchain.Blockchain(), rw, r)
 }
 
 func balance(rw http.ResponseWriter, r *http.Request) {
@@ -156,29 +182,65 @@ func balance(rw http.ResponseWriter, r *http.Request) {
 }
 
 func mempool(rw http.ResponseWriter, r *http.Request) {
-	utils.HandleErr(json.NewEncoder(rw).Encode(blockchain.Mempool.Txs))
+	utils.HandleErr(json.NewEncoder(rw).Encode(blockchain.Mempool().Txs))
 }
 
 func transactions(rw http.ResponseWriter, r *http.Request) {
+
 	var payload addTxPayload
 	utils.HandleErr(json.NewDecoder(r.Body).Decode(&payload))
-	err := blockchain.Mempool.AddTx(payload.To, payload.Amount)
+	fmt.Println(payload.To, "에게", payload.Amount, "만큼의 코인을 보냅니다.")
+	tx, err := blockchain.Mempool().AddTx(payload.To, payload.Amount) // 문제는 여기다 // 문제는 여기다 // 문제는 여기다 // 문제는 여기다
 	if err != nil {
-		json.NewEncoder(rw).Encode(errResponse{"not enough funds"}) // 잔액이 부족합니다의 의미
+		if tx == nil {
+			fmt.Println("transactions함수에서 왜 안돼 err 안으로 들어옴")
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(rw).Encode(errResponse{err.Error()})
+		// 잔액이 부족합니다 or 유효하지 않은 트랜잭션의 의미
+		return
 	}
+	p2p.BrodcastNewTx(tx) // Header가 Brodcast를 기다리지 않도록 go routine을 사용해줄 수 있어
 	rw.WriteHeader(http.StatusCreated)
+}
+
+func myWallet(rw http.ResponseWriter, r *http.Request) {
+	address := wallet.Wallet().Address
+	utils.HandleErr(json.NewEncoder(rw).Encode(myWalletResponse{Address: address}))
+}
+
+func loggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		fmt.Println(r.URL)
+		next.ServeHTTP(rw, r)
+	})
+}
+
+func peers(rw http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		var payload addPeerPayload
+		json.NewDecoder(r.Body).Decode(&payload)
+		p2p.AddPeer(payload.Address, payload.Port, port)
+		rw.WriteHeader(http.StatusOK)
+	case "GET":
+		json.NewEncoder(rw).Encode(p2p.AllPeers(&p2p.Peers))
+	}
 }
 
 func Strat(aPort int) {
 	router := mux.NewRouter()
-	router.Use(jsonContentTypeMiddleware)
+	router.Use(jsonContentTypeMiddleware, loggerMiddleware)
 	router.HandleFunc("/", documentation).Methods("GET")
 	router.HandleFunc("/blocks", blocks).Methods("GET", "POST")
 	router.HandleFunc("/status", status)
 	router.HandleFunc("/blocks/{hash:[a-f0-9]+}", block).Methods("GET")
 	router.HandleFunc("/balance/{address}", balance)
 	router.HandleFunc("/mempool", mempool)
+	router.HandleFunc("/wallet/", myWallet).Methods("GET")
 	router.HandleFunc("/transactions", transactions).Methods("POST")
+	router.HandleFunc("/ws", p2p.Upgrade).Methods("GET")
+	router.HandleFunc("/peers", peers).Methods("GET", "POST")
 	fmt.Printf("Listening on http://localhost:%d\n", aPort)
 	port = fmt.Sprintf(":%d", aPort)
 	log.Fatal(http.ListenAndServe(port, router))
