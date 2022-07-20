@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/nomadcoders_review/blockchain"
 	"github.com/nomadcoders_review/utils"
@@ -16,6 +17,7 @@ const (
 	MessageAllBlockResponse
 	MessageNewBlockNotify
 	MessageNewTxNotify
+	MessageNewPeerNotify
 )
 
 type Message struct {
@@ -61,6 +63,11 @@ func notifyNewTx(tx *blockchain.Tx, p *peer) {
 	p.inbox <- m
 }
 
+func notifyNewPeer(address string, p *peer) {
+	m := makeMessage(MessageNewPeerNotify, address)
+	p.inbox <- m
+}
+
 func handleMsg(p *peer, m *Message) {
 	fmt.Printf("Peer : %s, Sent a message with kind of: %d\n", p.key, m.Kind)
 	switch m.Kind {
@@ -94,11 +101,21 @@ func handleMsg(p *peer, m *Message) {
 		utils.HandleErr(json.Unmarshal(m.Payload, &payload))
 		blockchain.Blockchain().AddPeerBlock(payload)
 	case MessageNewTxNotify:
-		mempool := blockchain.Mempool()
-		mempool.M.Lock()
-		defer mempool.M.Unlock()
+		fmt.Println("새로운 트랜잭션을 받았습니다!! 새로운 트랜잭션을 받았습니다!! 새로운 트랜잭션을 받았습니다!! ")
 		var payload *blockchain.Tx
 		utils.HandleErr(json.Unmarshal(m.Payload, &payload))
+		fmt.Println("여기서 payload 분명 nil 뜬다.", payload)
 		blockchain.Mempool().AddPeerTx(payload)
+	case MessageNewPeerNotify:
+		var payload string
+		utils.HandleErr(json.Unmarshal(m.Payload, &payload))
+		fmt.Printf("I will now /ws upgrade %s\n", payload)
+		// payload의 값이 내가 가지고 있는 값이면 무시
+		// payload의 값이 내가 없는 값이면 전파
+		// 위 두 줄의 코드를 구현하려면 AddPeer를 나눠야해서 차라리 BroadcastNewPeer함수를 고치는게 낫겠다는 생각이 듦
+		// 아니면 AddPeer에서 BroadcastNewPeer함수를 쓰기 직전에 체크해도 되겠다.
+		//AddPeer(payload, port, openPort, true)
+		parts := strings.Split(payload, ":")
+		AddPeer(parts[0], parts[1], parts[2], false) // false를 넣어야 broadcastNewPeer를 실행시키지 않음
 	}
 }

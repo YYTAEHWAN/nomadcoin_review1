@@ -153,16 +153,24 @@ func (b *blockchain) Replace(newBlocks []*Block) {
 }
 
 // when you get new block from other peer, you can syncronize the new block on the blockchain and store information to DB
-func (b *blockchain) AddPeerBlock(block *Block) {
+func (b *blockchain) AddPeerBlock(newBlock *Block) {
 	b.m.Lock()
+	m.M.Lock()
 	defer b.m.Unlock()
+	defer m.M.Unlock()
 
 	b.Height += 1
-	b.NewestHash = block.Hash
-	b.CurrentDifficulty = block.Difficulty
+	b.NewestHash = newBlock.Hash
+	b.CurrentDifficulty = newBlock.Difficulty
 
 	persistBlockchain(b)
-	persistBlock(block)
+	persistBlock(newBlock)
 
 	// mempool work thing later...
+	for _, tx := range newBlock.Transaction {
+		_, ok := m.Txs[tx.Id] // 해시맵으로 찾는거구나
+		if ok {
+			delete(m.Txs, tx.Id)
+		}
+	}
 }

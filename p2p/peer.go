@@ -8,6 +8,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type peer struct {
+	key     string
+	address string
+	port    string
+	conn    *websocket.Conn
+	inbox   chan []byte
+}
+
 type peers struct {
 	v map[string]*peer
 	m sync.Mutex
@@ -15,14 +23,6 @@ type peers struct {
 
 var Peers = peers{
 	v: make(map[string]*peer),
-}
-
-type peer struct {
-	key     string
-	address string
-	port    string
-	conn    *websocket.Conn
-	inbox   chan []byte
 }
 
 func AllPeers(p *peers) []string {

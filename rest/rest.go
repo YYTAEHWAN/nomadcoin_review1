@@ -109,6 +109,11 @@ func documentation(rw http.ResponseWriter, r *http.Request) {
 			Method:      "POST",
 			Description: "Add a peer",
 		},
+		{
+			URL:         url("/mempool"),
+			Method:      "GET",
+			Description: "See mempool",
+		},
 	}
 	rw.Header().Add("Content-Type", "application/json")
 	// b, err := json.Marshal(data)
@@ -128,7 +133,6 @@ func block(rw http.ResponseWriter, r *http.Request) {
 	} else {
 		encoder.Encode(block)
 	}
-
 }
 
 func blocks(rw http.ResponseWriter, r *http.Request) {
@@ -160,7 +164,6 @@ func balance(rw http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	address := vars["address"]
 	encoder := json.NewEncoder(rw)
-
 	// totalBool := r.URL.Query().Get("total")
 	// if totalBool == "true" {
 	// 	total := blockchain.TotalBalanceByAddress(address)
@@ -169,7 +172,6 @@ func balance(rw http.ResponseWriter, r *http.Request) {
 	// 	OwnedTxOuts := blockchain.Blockchain().BalanceByAddress(address)
 	// 	utils.HandleErr(encoder.Encode(OwnedTxOuts))
 	// }
-
 	totlaResult := r.URL.Query().Get("total")
 	switch totlaResult {
 	case "true":
@@ -182,11 +184,11 @@ func balance(rw http.ResponseWriter, r *http.Request) {
 }
 
 func mempool(rw http.ResponseWriter, r *http.Request) {
+	fmt.Println(blockchain.Mempool().Txs, " - mempool함수를 실행하면서 정보를 cmd창에 출력합니다.")
 	utils.HandleErr(json.NewEncoder(rw).Encode(blockchain.Mempool().Txs))
 }
 
 func transactions(rw http.ResponseWriter, r *http.Request) {
-
 	var payload addTxPayload
 	utils.HandleErr(json.NewDecoder(r.Body).Decode(&payload))
 	fmt.Println(payload.To, "에게", payload.Amount, "만큼의 코인을 보냅니다.")
@@ -200,6 +202,8 @@ func transactions(rw http.ResponseWriter, r *http.Request) {
 		// 잔액이 부족합니다 or 유효하지 않은 트랜잭션의 의미
 		return
 	}
+	fmt.Println("BrodcastNewTx시작 BrodcastNewTx시작 BrodcastNewTx시작 BrodcastNewTx시작 ")
+	fmt.Println(tx)
 	p2p.BrodcastNewTx(tx) // Header가 Brodcast를 기다리지 않도록 go routine을 사용해줄 수 있어
 	rw.WriteHeader(http.StatusCreated)
 }
@@ -221,7 +225,8 @@ func peers(rw http.ResponseWriter, r *http.Request) {
 	case "POST":
 		var payload addPeerPayload
 		json.NewDecoder(r.Body).Decode(&payload)
-		p2p.AddPeer(payload.Address, payload.Port, port)
+		p2p.AddPeer(payload.Address, payload.Port, port[1:], true) // 앞에 두 개는 json body에 보낸거고, 뒤에 port는 http://localhost:3000/peers 의 3000을 뜻함
+		// 왜냐면 포트번호 3000의 입장에서 /peers 페이지에 POST를 보낸것이기 때문에 그러함
 		rw.WriteHeader(http.StatusOK)
 	case "GET":
 		json.NewEncoder(rw).Encode(p2p.AllPeers(&p2p.Peers))

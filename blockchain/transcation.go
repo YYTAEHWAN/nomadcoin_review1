@@ -18,7 +18,7 @@ var ErrorNoMoney error = errors.New("not enough money")
 var ErrorNotValid error = errors.New("Tx invalid")
 
 type mempool struct {
-	Txs []*Tx
+	Txs map[string]*Tx
 	M   sync.Mutex
 }
 
@@ -27,7 +27,9 @@ var memOnce sync.Once
 
 func Mempool() *mempool {
 	memOnce.Do(func() {
-		m = &mempool{}
+		m = &mempool{
+			Txs: make(map[string]*Tx),
+		}
 	})
 	return m
 }
@@ -118,7 +120,7 @@ func (m *mempool) AddTx(to string, amount int) (*Tx, error) {
 		}
 		return nil, ErrorNoMoney
 	}
-	m.Txs = append(m.Txs, tx)
+	m.Txs[tx.Id] = tx
 	fmt.Println("---AddTx함수 종료 2(normal)---")
 	return tx, nil
 }
@@ -167,7 +169,6 @@ func makeTx(from string, to string, amount int) (*Tx, error) {
 		fmt.Println("---makeTx 함수 종료 1(err)---")
 		return nil, ErrorNotValid
 	}
-	fmt.Println("여기서 에러? - 212번째 줄")
 	fmt.Println("---makeTx 함수 종료 2(normal)---")
 	return tx, nil
 }
@@ -263,15 +264,18 @@ func validate(t *Tx) bool {
 
 func (m *mempool) TxToConfirm() []*Tx {
 	coinbase := makeCoinbaseTx(wallet.Wallet().Address)
-	txs := m.Txs
+	var txs []*Tx
+	for _, tx := range m.Txs {
+		txs = append(txs, tx)
+	}
 	txs = append(txs, coinbase)
-	m.Txs = nil
-
+	m.Txs = make(map[string]*Tx)
 	return txs
 }
 
 func (m *mempool) AddPeerTx(tx *Tx) {
 	m.M.Lock()
 	defer m.M.Unlock()
-	m.Txs = append(m.Txs, tx)
+	fmt.Println("AddPeerTx에서 추가할 tx는 ", tx)
+	m.Txs[tx.Id] = tx
 }
