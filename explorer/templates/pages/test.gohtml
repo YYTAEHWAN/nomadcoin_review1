@@ -1,29 +1,15 @@
+{{define "test"}}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/mvp.css">
-    <title>test page</title>
-</head>
-<body>
-    <header>
-    <h1>{{.PageTitle}}</h1>
-    <h2>All blocks</h2>
-    </header>
+  {{template "head" .PageTitle}}
+  <body>
+    {{template "header" .PageTitle}}
     <main>
-     <section>
-     {{range .Blocks}}
-      <div>
-       <ul>
-         <li>{{.Hash}}</li>
-         <li>{{.Height}}</li>
-       </ul>
-      </div>
-     {{end}}
-     </section>
+    {{range .Blocks}}
+      {{template "block" .}}
+    {{end}}
     </main>
-    
-</body>
+  {{template "footer"}}
+  </body>
 </html>
+{{end}} 

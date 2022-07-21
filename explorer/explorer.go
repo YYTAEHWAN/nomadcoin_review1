@@ -32,7 +32,7 @@ type testData struct {
 // http.Reqeust를 사용하기 보다 포인터를 사용한다
 func home(rw http.ResponseWriter, r *http.Request) {
 
-	data := homeData{"Home", nil}
+	data := homeData{"Home", blockchain.Blocks(blockchain.Blockchain())}
 	templates.ExecuteTemplate(rw, "home", data)
 }
 
@@ -42,7 +42,7 @@ func add(rw http.ResponseWriter, r *http.Request) {
 		templates.ExecuteTemplate(rw, "add", nil)
 	case "POST":
 		//r.ParseForm()
-		//data := r.FormValue("blockData") 아마 Tx로 대체하겠죠
+		//data := r.FormValue("blockData") data를 안넣고 있는 Tx를 데이터로 넣게 됨
 		blockchain.AddBlock(blockchain.Blockchain())
 		http.Redirect(rw, r, "/", http.StatusPermanentRedirect)
 	default:
@@ -51,11 +51,8 @@ func add(rw http.ResponseWriter, r *http.Request) {
 }
 
 func test(rw http.ResponseWriter, r *http.Request) {
-
-	tmpl := template.Must(template.ParseFiles("explorer/templates/pages/test.gohtml"))
-	data := testData{"This is stressoffcoin Page", blockchain.Blocks(blockchain.Blockchain())} // templates에 전달할 데이터를 만들어준 뒤
-	tmpl.Execute(rw, data)
-
+	tData := testData{"stress off coin", blockchain.Blocks(blockchain.Blockchain())} // templates에 전달할 데이터를 만들어준 뒤
+	templates.ExecuteTemplate(rw, "test", tData)
 }
 
 func Start(ePort int) {
